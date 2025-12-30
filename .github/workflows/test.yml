@@ -65,9 +65,13 @@ jobs:
           [[ -d /usr/local/.ghcup ]] && paths+=(/usr/local/.ghcup)
           sudo /tmp/rmz "${paths[@]}" || true
           
-          # Merge disks
-          echo ">>> Installing LVM..."
-          sudo apt-get update -qq && sudo apt-get install -y -qq lvm2
+          # Merge disks - install tools if needed
+          if ! command -v pvcreate &> /dev/null; then
+            echo ">>> Installing LVM..."
+            sudo apt-get update -qq && sudo apt-get install -y -qq lvm2
+          else
+            echo ">>> LVM tools already installed"
+          fi
           
           echo ">>> Disabling swap and unmounting /mnt..."
           sudo swapoff -a || true
@@ -141,9 +145,19 @@ jobs:
           [[ -d /usr/local/.ghcup ]] && paths+=(/usr/local/.ghcup)
           sudo /tmp/rmz "${paths[@]}" || true
           
-          # Merge disks
-          echo ">>> Installing LVM and Btrfs tools..."
-          sudo apt-get update -qq && sudo apt-get install -y -qq lvm2 btrfs-progs
+          # Merge disks - install tools if needed
+          if ! command -v pvcreate &> /dev/null; then
+            echo ">>> Installing LVM..."
+            sudo apt-get update -qq && sudo apt-get install -y -qq lvm2
+          else
+            echo ">>> LVM tools already installed"
+          fi
+          if ! command -v mkfs.btrfs &> /dev/null; then
+            echo ">>> Installing Btrfs tools..."
+            sudo apt-get update -qq && sudo apt-get install -y -qq btrfs-progs
+          else
+            echo ">>> Btrfs tools already installed"
+          fi
           
           echo ">>> Disabling swap and unmounting /mnt..."
           sudo swapoff -a || true

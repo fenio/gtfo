@@ -175,13 +175,23 @@ runs:
         
         set -e  # Exit on error
         
-        # Install LVM and btrfs-progs if needed
-        echo ">>> Installing LVM tools..."
-        sudo apt-get update -qq
-        sudo apt-get install -y -qq lvm2
+        # Install LVM tools if not present
+        if ! command -v pvcreate &> /dev/null; then
+          echo ">>> Installing LVM tools..."
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lvm2
+        else
+          echo ">>> LVM tools already installed"
+        fi
+        
         if [[ "$USE_BTRFS" == "true" ]]; then
-          echo ">>> Installing Btrfs tools..."
-          sudo apt-get install -y -qq btrfs-progs
+          if ! command -v mkfs.btrfs &> /dev/null; then
+            echo ">>> Installing Btrfs tools..."
+            [[ -f /var/lib/apt/lists/lock ]] || sudo apt-get update -qq
+            sudo apt-get install -y -qq btrfs-progs
+          else
+            echo ">>> Btrfs tools already installed"
+          fi
         fi
         
         # Disable swap
