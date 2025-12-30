@@ -215,11 +215,11 @@ runs:
         echo ">>> Using loop device: $loop_dev"
         sudo losetup "$loop_dev" /space.img
         
-        # Create LVM physical volumes
+        # Create LVM physical volumes (force to overwrite existing signatures)
         echo ""
         echo ">>> Creating LVM physical volumes..."
-        sudo pvcreate /dev/sda1
-        sudo pvcreate "$loop_dev"
+        sudo pvcreate -ff -y /dev/sda1
+        sudo pvcreate -ff -y "$loop_dev"
         
         # Create volume group
         echo ">>> Creating volume group 'workspace'..."
