@@ -191,77 +191,105 @@ runs:
       shell: bash
       run: |
         echo "============================================"
-        echo "  Nuking packages via dpkg..."
+        echo "  Nuking additional bloat..."
         echo "============================================"
         echo ""
         
         # Collect all paths to nuke
         nuke_paths=()
         
-        # Function to add package directories to nuke list
-        add_package_dirs() {
-          local pkg="$1"
-          if dpkg -s "$pkg" &>/dev/null; then
-            echo ">>> Found $pkg"
-            # Get unique top-level directories from package (excluding /usr/share/doc, /usr/share/man, etc.)
-            while IFS= read -r dir; do
-              if [[ -d "$dir" && "$dir" != "/" ]]; then
-                nuke_paths+=("$dir")
-              fi
-            done < <(dpkg -L "$pkg" 2>/dev/null | grep -E "^/(opt|usr/lib|usr/share)/[^/]+$" | sort -u)
-          fi
-        }
-        
-        # Function to find packages matching pattern and add their dirs
-        add_pattern_dirs() {
-          local pattern="$1"
-          local packages=$(dpkg -l | grep -E "^ii\s+$pattern" | awk '{print $2}' || true)
-          for pkg in $packages; do
-            add_package_dirs "$pkg"
-          done
-        }
-        
-        # Browsers - add known locations directly (faster than parsing dpkg)
+        # Browsers
         echo "=== Browsers ==="
-        [[ -d "/opt/google/chrome" ]] && nuke_paths+=("/opt/google/chrome") && echo ">>> Found Chrome"
-        [[ -d "/opt/microsoft/msedge" ]] && nuke_paths+=("/opt/microsoft/msedge") && echo ">>> Found Edge"
-        [[ -d "/opt/microsoft/edge" ]] && nuke_paths+=("/opt/microsoft/edge") && echo ">>> Found Edge"
-        [[ -d "/usr/lib/firefox" ]] && nuke_paths+=("/usr/lib/firefox") && echo ">>> Found Firefox"
-        [[ -d "/usr/lib/chromium-browser" ]] && nuke_paths+=("/usr/lib/chromium-browser") && echo ">>> Found Chromium"
+        [[ -d "/opt/google/chrome" ]] && nuke_paths+=("/opt/google/chrome") && echo ">>> Chrome"
+        [[ -d "/opt/microsoft/msedge" ]] && nuke_paths+=("/opt/microsoft/msedge") && echo ">>> Edge (msedge)"
+        [[ -d "/opt/microsoft/edge" ]] && nuke_paths+=("/opt/microsoft/edge") && echo ">>> Edge"
+        [[ -d "/usr/lib/firefox" ]] && nuke_paths+=("/usr/lib/firefox") && echo ">>> Firefox"
+        [[ -d "/usr/lib/chromium-browser" ]] && nuke_paths+=("/usr/lib/chromium-browser") && echo ">>> Chromium"
+        [[ -d "/usr/local/share/chromium" ]] && nuke_paths+=("/usr/local/share/chromium") && echo ">>> Chromium (local)"
         
-        # Cloud CLIs - known locations
+        # Cloud CLIs
         echo ""
         echo "=== Cloud CLIs ==="
-        [[ -d "/usr/share/az_9.5.0" ]] && nuke_paths+=("/usr/share/az_9.5.0") && echo ">>> Found Azure CLI"
-        [[ -d "/opt/az" ]] && nuke_paths+=("/opt/az") && echo ">>> Found Azure CLI (opt)"
-        [[ -d "/usr/lib/google-cloud-sdk" ]] && nuke_paths+=("/usr/lib/google-cloud-sdk") && echo ">>> Found Google Cloud SDK"
-        [[ -d "/usr/local/aws-cli" ]] && nuke_paths+=("/usr/local/aws-cli") && echo ">>> Found AWS CLI"
-        # Find azure CLI directory dynamically
+        [[ -d "/usr/lib/google-cloud-sdk" ]] && nuke_paths+=("/usr/lib/google-cloud-sdk") && echo ">>> Google Cloud SDK"
+        [[ -d "/usr/local/aws-cli" ]] && nuke_paths+=("/usr/local/aws-cli") && echo ">>> AWS CLI"
+        [[ -d "/usr/local/aws-sam-cli" ]] && nuke_paths+=("/usr/local/aws-sam-cli") && echo ">>> AWS SAM CLI"
+        [[ -d "/usr/local/sessionmanagerplugin" ]] && nuke_paths+=("/usr/local/sessionmanagerplugin") && echo ">>> AWS Session Manager"
+        # Azure CLI directories (versioned)
         for d in /usr/share/az_*; do
-          [[ -d "$d" ]] && nuke_paths+=("$d") && echo ">>> Found Azure CLI at $d"
+          [[ -d "$d" ]] && nuke_paths+=("$d") && echo ">>> Azure CLI at $d"
         done
-        for d in /opt/hostedtoolcache/Python/*/x64/lib/python*/site-packages/azure; do
-          [[ -d "$d" ]] && nuke_paths+=("$d")
-        done
+        [[ -d "/opt/az" ]] && nuke_paths+=("/opt/az") && echo ">>> Azure CLI (opt)"
         
-        # Databases - known locations  
+        # Databases
         echo ""
         echo "=== Databases ==="
-        [[ -d "/usr/lib/postgresql" ]] && nuke_paths+=("/usr/lib/postgresql") && echo ">>> Found PostgreSQL"
-        [[ -d "/usr/share/postgresql" ]] && nuke_paths+=("/usr/share/postgresql") && echo ">>> Found PostgreSQL data"
-        [[ -d "/usr/lib/mysql" ]] && nuke_paths+=("/usr/lib/mysql") && echo ">>> Found MySQL"
-        [[ -d "/usr/share/mysql" ]] && nuke_paths+=("/usr/share/mysql") && echo ">>> Found MySQL data"
-        [[ -d "/var/lib/mysql" ]] && nuke_paths+=("/var/lib/mysql") && echo ">>> Found MySQL var"
-        [[ -d "/var/lib/postgresql" ]] && nuke_paths+=("/var/lib/postgresql") && echo ">>> Found PostgreSQL var"
+        [[ -d "/usr/lib/postgresql" ]] && nuke_paths+=("/usr/lib/postgresql") && echo ">>> PostgreSQL lib"
+        [[ -d "/usr/share/postgresql" ]] && nuke_paths+=("/usr/share/postgresql") && echo ">>> PostgreSQL share"
+        [[ -d "/var/lib/postgresql" ]] && nuke_paths+=("/var/lib/postgresql") && echo ">>> PostgreSQL data"
+        [[ -d "/usr/lib/mysql" ]] && nuke_paths+=("/usr/lib/mysql") && echo ">>> MySQL lib"
+        [[ -d "/usr/share/mysql" ]] && nuke_paths+=("/usr/share/mysql") && echo ">>> MySQL share"
+        [[ -d "/var/lib/mysql" ]] && nuke_paths+=("/var/lib/mysql") && echo ">>> MySQL data"
+        
+        # Languages/Runtimes
+        echo ""
+        echo "=== Languages/Runtimes ==="
+        # Julia
+        for d in /usr/local/julia*/; do
+          [[ -d "$d" ]] && nuke_paths+=("$d") && echo ">>> Julia at $d"
+        done
+        # Miniconda
+        [[ -d "/usr/share/miniconda" ]] && nuke_paths+=("/usr/share/miniconda") && echo ">>> Miniconda"
+        # Rust toolchains (multiple locations)
+        [[ -d "/home/runner/.rustup" ]] && nuke_paths+=("/home/runner/.rustup") && echo ">>> Rust (runner)"
+        [[ -d "/home/packer/.rustup" ]] && nuke_paths+=("/home/packer/.rustup") && echo ">>> Rust (packer)"
+        [[ -d "/etc/skel/.rustup" ]] && nuke_paths+=("/etc/skel/.rustup") && echo ">>> Rust (skel)"
+        [[ -d "/usr/local/.rustup" ]] && nuke_paths+=("/usr/local/.rustup") && echo ">>> Rust (local)"
+        # Cargo
+        [[ -d "/home/runner/.cargo" ]] && nuke_paths+=("/home/runner/.cargo") && echo ">>> Cargo (runner)"
+        [[ -d "/home/packer/.cargo" ]] && nuke_paths+=("/home/packer/.cargo") && echo ">>> Cargo (packer)"
+        [[ -d "/etc/skel/.cargo" ]] && nuke_paths+=("/etc/skel/.cargo") && echo ">>> Cargo (skel)"
+        
+        # Build tools
+        echo ""
+        echo "=== Build Tools ==="
+        # Gradle
+        for d in /usr/share/gradle-*/; do
+          [[ -d "$d" ]] && nuke_paths+=("$d") && echo ">>> Gradle at $d"
+        done
+        # Kotlin
+        [[ -d "/usr/share/kotlinc" ]] && nuke_paths+=("/usr/share/kotlinc") && echo ">>> Kotlin"
+        # Maven
+        for d in /usr/share/apache-maven-*/; do
+          [[ -d "$d" ]] && nuke_paths+=("$d") && echo ">>> Maven at $d"
+        done
+        # LLVM versions
+        for d in /usr/lib/llvm-*/; do
+          [[ -d "$d" ]] && nuke_paths+=("$d") && echo ">>> LLVM at $d"
+        done
+        
+        # Other bloat
+        echo ""
+        echo "=== Other ==="
+        # PowerShell modules
+        [[ -d "/usr/local/share/powershell" ]] && nuke_paths+=("/usr/local/share/powershell") && echo ">>> PowerShell modules"
+        # Homebrew
+        [[ -d "/home/linuxbrew" ]] && nuke_paths+=("/home/linuxbrew") && echo ">>> Linuxbrew"
+        # Packer home
+        [[ -d "/home/packer" ]] && nuke_paths+=("/home/packer") && echo ">>> Packer home"
+        # Node version manager
+        [[ -d "/usr/local/n" ]] && nuke_paths+=("/usr/local/n") && echo ">>> Node version manager"
+        # Java VMs (careful - may break things)
+        [[ -d "/usr/lib/jvm" ]] && nuke_paths+=("/usr/lib/jvm") && echo ">>> Java VMs"
         
         echo ""
         
         # Remove duplicates and nuke
         if [[ ${#nuke_paths[@]} -gt 0 ]]; then
-          # Remove duplicates
           readarray -t unique_paths < <(printf '%s\n' "${nuke_paths[@]}" | sort -u)
           echo "Nuking ${#unique_paths[@]} directories..."
-          echo "Paths: ${unique_paths[*]}"
+          for p in "${unique_paths[@]}"; do
+            echo "  - $p"
+          done
           echo ""
           sudo /tmp/rmz "${unique_paths[@]}" 2>/dev/null || true
           echo "Nuke complete!"

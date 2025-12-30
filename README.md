@@ -137,9 +137,19 @@ Uses Btrfs with zstd compression for the merged volume.
 | `/usr/share/swift` | ~1.5GB | `remove-swift` |
 | `/opt/hostedtoolcache/CodeQL` | ~1GB | `remove-codeql` |
 | Docker images | ~4GB | `remove-docker-images` |
-| Browsers (Chrome, Firefox, Edge) | ~1GB | `nuke` |
-| Databases (MySQL, PostgreSQL, MongoDB) | ~1GB | `nuke` |
-| Cloud CLIs (Azure, GCloud, AWS) | ~2GB | `nuke` |
+
+### Nuke option
+
+The `nuke` option removes additional bloat (~8GB+):
+
+| Category | Paths | Size |
+|----------|-------|------|
+| Browsers | Chrome, Firefox, Edge, Chromium | ~1.5GB |
+| Cloud CLIs | Azure, GCloud, AWS CLI, AWS SAM | ~2GB |
+| Databases | PostgreSQL, MySQL | ~0.5GB |
+| Languages | Julia, Miniconda, Rust toolchains | ~2.5GB |
+| Build tools | Gradle, Kotlin, Maven, LLVM | ~2GB |
+| Other | PowerShell, Linuxbrew, Java VMs | ~2GB |
 
 ## License
 
