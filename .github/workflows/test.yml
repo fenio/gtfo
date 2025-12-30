@@ -30,6 +30,7 @@ jobs:
           remove-haskell: 'true'
           remove-boost: 'true'
           remove-swift: 'true'
+          remove-docker-images: 'true'
           merge-disks: 'false'
       - name: Verify workspace is writable
         run: |
@@ -53,6 +54,11 @@ jobs:
           echo "============================================"
           df -h
           
+          # Save initial values
+          INITIAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')
+          INITIAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')
+          INITIAL_MNT_AVAIL=$(df /mnt --output=avail -BG | tail -1 | tr -d ' G')
+          
           # Install rmz
           echo ">>> Installing rmz..."
           curl -sL https://github.com/SUPERCILEX/fuc/releases/download/3.1.1/x86_64-unknown-linux-gnu-rmz -o /tmp/rmz
@@ -64,6 +70,10 @@ jobs:
           [[ -d /opt/ghc ]] && paths+=(/opt/ghc)
           [[ -d /usr/local/.ghcup ]] && paths+=(/usr/local/.ghcup)
           sudo /tmp/rmz "${paths[@]}" || true
+          
+          # Remove Docker images
+          echo ">>> Removing Docker images..."
+          docker system prune -af || true
           
           # Merge disks - install tools if needed
           if ! command -v pvcreate &> /dev/null; then
@@ -104,9 +114,38 @@ jobs:
           
           echo ""
           echo "============================================"
-          echo "  Final Disk State"
+          echo "  GTFO - Summary"
           echo "============================================"
+          echo ""
           df -h
+          echo ""
+          
+          FINAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')
+          FINAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')
+          ROOT_FREED=$((FINAL_ROOT_AVAIL - INITIAL_ROOT_AVAIL))
+          WORKSPACE_AVAIL=$(df /home/runner/work --output=avail -BG | tail -1 | tr -d ' G')
+          WORKSPACE_SIZE=$(df /home/runner/work --output=size -BG | tail -1 | tr -d ' G')
+          
+          echo "============================================"
+          echo "  Space Report"
+          echo "============================================"
+          echo ""
+          echo "Root filesystem (/):"
+          echo "  Before: ${INITIAL_ROOT_USED}GB used, ${INITIAL_ROOT_AVAIL}GB available"
+          echo "  After:  ${FINAL_ROOT_USED}GB used, ${FINAL_ROOT_AVAIL}GB available"
+          echo "  Freed:  ${ROOT_FREED}GB"
+          echo ""
+          echo "Merged workspace (/home/runner/work):"
+          echo "  Total size: ${WORKSPACE_SIZE}GB"
+          echo "  Available:  ${WORKSPACE_AVAIL}GB"
+          echo ""
+          echo "Combined from:"
+          echo "  - Loopback from root (~${loop_size}GB)"
+          echo "  - /mnt disk (~${INITIAL_MNT_AVAIL}GB)"
+          echo ""
+          echo "============================================"
+          echo "  GTFO complete!"
+          echo "============================================"
       - name: Verify merged workspace
         working-directory: /home/runner/work
         run: |
@@ -133,6 +172,11 @@ jobs:
           echo "============================================"
           df -h
           
+          # Save initial values
+          INITIAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')
+          INITIAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')
+          INITIAL_MNT_AVAIL=$(df /mnt --output=avail -BG | tail -1 | tr -d ' G')
+          
           # Install rmz
           echo ">>> Installing rmz..."
           curl -sL https://github.com/SUPERCILEX/fuc/releases/download/3.1.1/x86_64-unknown-linux-gnu-rmz -o /tmp/rmz
@@ -144,6 +188,10 @@ jobs:
           [[ -d /opt/ghc ]] && paths+=(/opt/ghc)
           [[ -d /usr/local/.ghcup ]] && paths+=(/usr/local/.ghcup)
           sudo /tmp/rmz "${paths[@]}" || true
+          
+          # Remove Docker images
+          echo ">>> Removing Docker images..."
+          docker system prune -af || true
           
           # Merge disks - install tools if needed
           if ! command -v pvcreate &> /dev/null; then
@@ -190,9 +238,38 @@ jobs:
           
           echo ""
           echo "============================================"
-          echo "  Final Disk State"
+          echo "  GTFO - Summary"
           echo "============================================"
+          echo ""
           df -h
+          echo ""
+          
+          FINAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')
+          FINAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')
+          ROOT_FREED=$((FINAL_ROOT_AVAIL - INITIAL_ROOT_AVAIL))
+          WORKSPACE_AVAIL=$(df /home/runner/work --output=avail -BG | tail -1 | tr -d ' G')
+          WORKSPACE_SIZE=$(df /home/runner/work --output=size -BG | tail -1 | tr -d ' G')
+          
+          echo "============================================"
+          echo "  Space Report"
+          echo "============================================"
+          echo ""
+          echo "Root filesystem (/):"
+          echo "  Before: ${INITIAL_ROOT_USED}GB used, ${INITIAL_ROOT_AVAIL}GB available"
+          echo "  After:  ${FINAL_ROOT_USED}GB used, ${FINAL_ROOT_AVAIL}GB available"
+          echo "  Freed:  ${ROOT_FREED}GB"
+          echo ""
+          echo "Merged workspace (/home/runner/work) - Btrfs+zstd:"
+          echo "  Total size: ${WORKSPACE_SIZE}GB"
+          echo "  Available:  ${WORKSPACE_AVAIL}GB"
+          echo ""
+          echo "Combined from:"
+          echo "  - Loopback from root (~${loop_size}GB)"
+          echo "  - /mnt disk (~${INITIAL_MNT_AVAIL}GB)"
+          echo ""
+          echo "============================================"
+          echo "  GTFO complete!"
+          echo "============================================"
       - name: Verify Btrfs workspace
         working-directory: /home/runner/work
         run: |
