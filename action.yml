@@ -1,5 +1,5 @@
 name: 'rmrf'
-description: 'rm -rf the bloat - Reclaim disk space on GitHub runners'
+description: 'Runner Maintenance: Reclaim Filesystem - Reclaim disk space on GitHub runners'
 author: 'fenio'
 
 branding:

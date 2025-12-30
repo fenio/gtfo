@@ -1,6 +1,6 @@
 # rmrf
 
-`rm -rf` the bloat - Reclaim disk space on GitHub runners.
+**R**unner **M**aintenance: **R**eclaim **F**ilesystem - Reclaim disk space on GitHub runners.
 
 GitHub-hosted runners come with a lot of pre-installed software you probably don't need. This action removes the bloat and optionally merges multiple disks into a single large volume.
 
