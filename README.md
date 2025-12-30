@@ -1,6 +1,6 @@
-# GTFO
+# rmrf
 
-**G**et **T**he **F***** **O**ut - Reclaim disk space on GitHub runners.
+`rm -rf` the bloat - Reclaim disk space on GitHub runners.
 
 GitHub-hosted runners come with a lot of pre-installed software you probably don't need. This action removes the bloat and optionally merges multiple disks into a single large volume.
 
@@ -16,7 +16,7 @@ GitHub-hosted runners come with a lot of pre-installed software you probably don
 ### Basic (cleanup only)
 
 ```yaml
-- uses: fenio/gtfo@v1
+- uses: fenio/rmrf@v1
 ```
 
 This removes ~20GB of bloat (Android SDK, .NET, Haskell, Boost, Swift, CodeQL).
@@ -30,8 +30,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # GTFO must run FIRST when using merge-disks
-      - uses: fenio/gtfo@v1
+      # rmrf must run FIRST when using merge-disks
+      - uses: fenio/rmrf@v1
         with:
           merge-disks: 'true'
       
@@ -50,8 +50,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # GTFO must run FIRST when using merge-disks
-      - uses: fenio/gtfo@v1
+      # rmrf must run FIRST when using merge-disks
+      - uses: fenio/rmrf@v1
         with:
           merge-disks: 'true'
           use-btrfs: 'true'
@@ -65,7 +65,7 @@ Uses Btrfs with zstd compression for the merged volume.
 ### Custom configuration
 
 ```yaml
-- uses: fenio/gtfo@v1
+- uses: fenio/rmrf@v1
   with:
     remove-android: 'true'          # ~12GB
     remove-dotnet: 'true'           # ~2GB

@@ -1,5 +1,5 @@
-name: 'GTFO'
-description: 'Get The F*** Out - Analyze and reclaim disk space on GitHub runners'
+name: 'rmrf'
+description: 'rm -rf the bloat - Reclaim disk space on GitHub runners'
 author: 'fenio'
 
 branding:
@@ -62,7 +62,7 @@ runs:
       shell: bash
       run: |
         echo "============================================"
-        echo "  GTFO - Initial Disk State"
+        echo "  rmrf - Initial Disk State"
         echo "============================================"
         echo ""
         df -h
@@ -431,7 +431,7 @@ runs:
       run: |
         echo ""
         echo "============================================"
-        echo "  GTFO - Summary"
+        echo "  rmrf - Summary"
         echo "============================================"
         echo ""
         
@@ -468,5 +468,5 @@ runs:
         
         echo ""
         echo "============================================"
-        echo "  GTFO complete!"
+        echo "  rmrf complete!"
         echo "============================================"

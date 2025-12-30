@@ -1,4 +1,4 @@
-name: Test GTFO
+name: Test rmrf
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run GTFO (cleanup only)
+      - name: Run rmrf (cleanup only)
         uses: ./
         with:
           remove-android: 'true'
@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run GTFO with nuke
+      - name: Run rmrf with nuke
         uses: ./
         with:
           remove-android: 'true'
@@ -118,10 +118,10 @@ jobs:
     if: ${{ github.event_name == 'push' || github.event.inputs.test-mode == 'all' || github.event.inputs.test-mode == 'merge-ext4' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Run GTFO inline (merge with ext4)
+      - name: Run rmrf inline (merge with ext4)
         run: |
           echo "============================================"
-          echo "  GTFO - Initial Disk State"
+          echo "  rmrf - Initial Disk State"
           echo "============================================"
           df -h
           
@@ -193,7 +193,7 @@ jobs:
           
           echo ""
           echo "============================================"
-          echo "  GTFO - Summary"
+          echo "  rmrf - Summary"
           echo "============================================"
           echo ""
           df -h
@@ -223,7 +223,7 @@ jobs:
           echo "  - /mnt disk (~${INITIAL_MNT_AVAIL}GB)"
           echo ""
           echo "============================================"
-          echo "  GTFO complete!"
+          echo "  rmrf complete!"
           echo "============================================"
       - name: Verify merged workspace
         working-directory: /home/runner/work
@@ -244,10 +244,10 @@ jobs:
     if: ${{ github.event_name == 'push' || github.event.inputs.test-mode == 'all' || github.event.inputs.test-mode == 'merge-btrfs' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Run GTFO inline (merge with Btrfs)
+      - name: Run rmrf inline (merge with Btrfs)
         run: |
           echo "============================================"
-          echo "  GTFO - Initial Disk State"
+          echo "  rmrf - Initial Disk State"
           echo "============================================"
           df -h
           
@@ -325,7 +325,7 @@ jobs:
           
           echo ""
           echo "============================================"
-          echo "  GTFO - Summary"
+          echo "  rmrf - Summary"
           echo "============================================"
           echo ""
           df -h
@@ -355,7 +355,7 @@ jobs:
           echo "  - /mnt disk (~${INITIAL_MNT_AVAIL}GB)"
           echo ""
           echo "============================================"
-          echo "  GTFO complete!"
+          echo "  rmrf complete!"
           echo "============================================"
       - name: Verify Btrfs workspace
         working-directory: /home/runner/work
@@ -379,10 +379,10 @@ jobs:
     if: ${{ github.event_name == 'push' || github.event.inputs.test-mode == 'all' || github.event.inputs.test-mode == 'max-space' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Run GTFO inline (maximum cleanup + Btrfs merge)
+      - name: Run rmrf inline (maximum cleanup + Btrfs merge)
         run: |
           echo "============================================"
-          echo "  GTFO - MAXIMUM SPACE TEST"
+          echo "  rmrf - MAXIMUM SPACE TEST"
           echo "============================================"
           echo ""
           df -h
