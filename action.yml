@@ -218,12 +218,12 @@ runs:
         # Create LVM physical volumes (force to overwrite existing signatures)
         echo ""
         echo ">>> Creating LVM physical volumes..."
-        sudo pvcreate -ff -y /dev/sda1
+        sudo pvcreate -ff -y /dev/sdb1
         sudo pvcreate -ff -y "$loop_dev"
         
         # Create volume group
         echo ">>> Creating volume group 'workspace'..."
-        sudo vgcreate workspace /dev/sda1 "$loop_dev"
+        sudo vgcreate workspace /dev/sdb1 "$loop_dev"
         
         # Create logical volume
         echo ">>> Creating logical volume 'work'..."

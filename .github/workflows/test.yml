@@ -84,9 +84,9 @@ jobs:
           
           # Create LVM
           echo ">>> Creating LVM..."
-          sudo pvcreate -ff -y /dev/sda1
+          sudo pvcreate -ff -y /dev/sdb1
           sudo pvcreate -ff -y "$loop_dev"
-          sudo vgcreate workspace /dev/sda1 "$loop_dev"
+          sudo vgcreate workspace /dev/sdb1 "$loop_dev"
           sudo lvcreate -l 100%FREE -n work workspace
           
           # Format and mount
@@ -157,9 +157,9 @@ jobs:
           
           # Create LVM
           echo ">>> Creating LVM..."
-          sudo pvcreate -ff -y /dev/sda1
+          sudo pvcreate -ff -y /dev/sdb1
           sudo pvcreate -ff -y "$loop_dev"
-          sudo vgcreate workspace /dev/sda1 "$loop_dev"
+          sudo vgcreate workspace /dev/sdb1 "$loop_dev"
           sudo lvcreate -l 100%FREE -n work workspace
           
           # Format and mount with Btrfs
