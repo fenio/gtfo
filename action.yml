@@ -44,63 +44,26 @@ runs:
   using: 'composite'
   steps:
     # ============================================
-    # PHASE 1: Report initial disk state
+    # PHASE 1: Record initial disk state
     # ============================================
-    - name: Initial disk state - filesystem usage
+    - name: Record initial disk state
       shell: bash
       run: |
         echo "============================================"
-        echo "  GTFO - Initial Disk Usage Analysis"
+        echo "  GTFO - Initial Disk State"
         echo "============================================"
         echo ""
-        echo ">>> Filesystem usage (df -h)"
-        echo "--------------------------------------------"
         df -h
         echo ""
-
-    - name: Initial disk state - top-level directories
-      shell: bash
-      run: |
-        echo ">>> Top-level directory sizes (du -sm /*)"
-        echo "--------------------------------------------"
-        sudo du -sm /* 2>/dev/null | sort -rn | head -20 || true
-        echo ""
-
-    - name: Initial disk state - /usr breakdown
-      shell: bash
-      run: |
-        echo ">>> Largest directories in /usr"
-        echo "--------------------------------------------"
-        sudo du -sm /usr/* 2>/dev/null | sort -rn | head -10 || true
-        echo ""
-
-    - name: Initial disk state - /mnt inspection
-      shell: bash
-      run: |
-        echo ">>> Contents of /mnt (secondary disk)"
-        echo "--------------------------------------------"
+        
+        # Save initial values for summary
+        echo "INITIAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')" >> $GITHUB_ENV
+        echo "INITIAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')" >> $GITHUB_ENV
+        
         if mountpoint -q /mnt 2>/dev/null; then
-          echo "Device: $(df /mnt | tail -1 | awk '{print $1}')"
-          echo "Total: $(df -h /mnt | tail -1 | awk '{print $2}')  Used: $(df -h /mnt | tail -1 | awk '{print $3}')  Free: $(df -h /mnt | tail -1 | awk '{print $4}')"
-          echo ""
-          echo "Contents:"
-          sudo ls -la /mnt 2>/dev/null || true
-        else
-          echo "/mnt is not a separate mount point"
+          echo "INITIAL_MNT_AVAIL=$(df /mnt --output=avail -BG | tail -1 | tr -d ' G')" >> $GITHUB_ENV
+          echo ">>> /mnt is mounted ($(df -h /mnt --output=size | tail -1 | tr -d ' ') total, $(df -h /mnt --output=avail | tail -1 | tr -d ' ') available)"
         fi
-        echo ""
-
-    - name: Initial disk state - Docker images
-      shell: bash
-      run: |
-        echo ">>> Docker images"
-        echo "--------------------------------------------"
-        if command -v docker &> /dev/null; then
-          docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" 2>/dev/null || echo "Docker not accessible"
-        else
-          echo "Docker not installed"
-        fi
-        echo ""
 
     # ============================================
     # PHASE 2: Install rmz for fast deletion
@@ -295,23 +258,50 @@ runs:
         echo ">>> Disk merge complete!"
 
     # ============================================
-    # PHASE 5: Report final disk state
+    # PHASE 5: Summary
     # ============================================
-    - name: Final disk state
+    - name: Summary
       shell: bash
+      env:
+        MERGE_DISKS: ${{ inputs.merge-disks }}
       run: |
         echo ""
         echo "============================================"
-        echo "  GTFO - Final Disk Usage"
+        echo "  GTFO - Summary"
         echo "============================================"
         echo ""
-        echo ">>> Filesystem usage (df -h)"
-        echo "--------------------------------------------"
+        
         df -h
         echo ""
-        echo ">>> Top-level directory sizes"
-        echo "--------------------------------------------"
-        sudo du -sm /* 2>/dev/null | sort -rn | head -15 || true
+        
+        # Calculate space gained
+        FINAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')
+        FINAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')
+        
+        ROOT_FREED=$((FINAL_ROOT_AVAIL - INITIAL_ROOT_AVAIL))
+        
+        echo "============================================"
+        echo "  Space Report"
+        echo "============================================"
+        echo ""
+        echo "Root filesystem (/):"
+        echo "  Before: ${INITIAL_ROOT_USED}GB used, ${INITIAL_ROOT_AVAIL}GB available"
+        echo "  After:  ${FINAL_ROOT_USED}GB used, ${FINAL_ROOT_AVAIL}GB available"
+        echo "  Freed:  ${ROOT_FREED}GB"
+        echo ""
+        
+        if [[ "$MERGE_DISKS" == "true" ]]; then
+          WORKSPACE_AVAIL=$(df /home/runner/work --output=avail -BG | tail -1 | tr -d ' G')
+          WORKSPACE_SIZE=$(df /home/runner/work --output=size -BG | tail -1 | tr -d ' G')
+          echo "Merged workspace (/home/runner/work):"
+          echo "  Total size: ${WORKSPACE_SIZE}GB"
+          echo "  Available:  ${WORKSPACE_AVAIL}GB"
+          echo ""
+          echo "Combined from:"
+          echo "  - Loopback from root (~${ROOT_FREED}GB * 80%)"
+          echo "  - /mnt disk (~${INITIAL_MNT_AVAIL:-74}GB)"
+        fi
+        
         echo ""
         echo "============================================"
         echo "  GTFO complete!"
