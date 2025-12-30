@@ -15,6 +15,7 @@ on:
           - nuke
           - merge-ext4
           - merge-btrfs
+          - max-space
 
 jobs:
   # Test 1: Default cleanup (no merge)
@@ -371,3 +372,225 @@ jobs:
           cat test-file.txt
           rm test-file.txt
           echo "Btrfs workspace is functional!"
+
+  # Test 5: Maximum space - all cleanup + nuke + hostedtoolcache + docker + btrfs merge
+  # This test shows the absolute maximum space we can reclaim
+  test-max-space:
+    if: ${{ github.event_name == 'push' || github.event.inputs.test-mode == 'all' || github.event.inputs.test-mode == 'max-space' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run GTFO inline (maximum cleanup + Btrfs merge)
+        run: |
+          echo "============================================"
+          echo "  GTFO - MAXIMUM SPACE TEST"
+          echo "============================================"
+          echo ""
+          df -h
+          
+          # Save initial values
+          INITIAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')
+          INITIAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')
+          INITIAL_MNT_AVAIL=$(df /mnt --output=avail -BG | tail -1 | tr -d ' G')
+          
+          # Install rmz
+          echo ""
+          echo ">>> Installing rmz..."
+          curl -sL https://github.com/SUPERCILEX/fuc/releases/download/3.1.1/x86_64-unknown-linux-gnu-rmz -o /tmp/rmz
+          chmod +x /tmp/rmz
+          
+          # ============================================
+          # PHASE 1: Standard cleanup
+          # ============================================
+          echo ""
+          echo "============================================"
+          echo "  Phase 1: Standard cleanup"
+          echo "============================================"
+          paths=()
+          paths+=(/usr/local/lib/android)      # Android SDK ~12GB
+          paths+=(/usr/share/dotnet)           # .NET ~2GB
+          paths+=(/usr/share/swift)            # Swift ~1.5GB
+          paths+=(/usr/local/share/boost)      # Boost ~1GB
+          [[ -d /opt/ghc ]] && paths+=(/opt/ghc)                    # GHC
+          [[ -d /usr/local/.ghcup ]] && paths+=(/usr/local/.ghcup)  # GHCup
+          [[ -d /opt/hostedtoolcache ]] && paths+=(/opt/hostedtoolcache)  # Hosted tool cache ~8GB
+          
+          echo "Removing: ${paths[*]}"
+          sudo /tmp/rmz "${paths[@]}" 2>/dev/null || true
+          
+          # Remove Docker images
+          echo ">>> Removing Docker images..."
+          docker system prune -af || true
+          
+          # ============================================
+          # PHASE 2: Nuke everything
+          # ============================================
+          echo ""
+          echo "============================================"
+          echo "  Phase 2: Nuke packages"
+          echo "============================================"
+          
+          nuke_paths=()
+          
+          # Browsers
+          [[ -d "/opt/google/chrome" ]] && nuke_paths+=("/opt/google/chrome")
+          [[ -d "/opt/microsoft/msedge" ]] && nuke_paths+=("/opt/microsoft/msedge")
+          [[ -d "/opt/microsoft/edge" ]] && nuke_paths+=("/opt/microsoft/edge")
+          [[ -d "/usr/lib/firefox" ]] && nuke_paths+=("/usr/lib/firefox")
+          [[ -d "/usr/lib/chromium-browser" ]] && nuke_paths+=("/usr/lib/chromium-browser")
+          [[ -d "/usr/local/share/chromium" ]] && nuke_paths+=("/usr/local/share/chromium")
+          
+          # Cloud CLIs
+          [[ -d "/usr/lib/google-cloud-sdk" ]] && nuke_paths+=("/usr/lib/google-cloud-sdk")
+          [[ -d "/usr/local/aws-cli" ]] && nuke_paths+=("/usr/local/aws-cli")
+          [[ -d "/usr/local/aws-sam-cli" ]] && nuke_paths+=("/usr/local/aws-sam-cli")
+          [[ -d "/usr/local/sessionmanagerplugin" ]] && nuke_paths+=("/usr/local/sessionmanagerplugin")
+          for d in /usr/share/az_*; do [[ -d "$d" ]] && nuke_paths+=("$d"); done
+          [[ -d "/opt/az" ]] && nuke_paths+=("/opt/az")
+          
+          # Databases
+          [[ -d "/usr/lib/postgresql" ]] && nuke_paths+=("/usr/lib/postgresql")
+          [[ -d "/usr/share/postgresql" ]] && nuke_paths+=("/usr/share/postgresql")
+          [[ -d "/var/lib/postgresql" ]] && nuke_paths+=("/var/lib/postgresql")
+          [[ -d "/usr/lib/mysql" ]] && nuke_paths+=("/usr/lib/mysql")
+          [[ -d "/usr/share/mysql" ]] && nuke_paths+=("/usr/share/mysql")
+          [[ -d "/var/lib/mysql" ]] && nuke_paths+=("/var/lib/mysql")
+          
+          # Languages/Runtimes
+          for d in /usr/local/julia*/; do [[ -d "$d" ]] && nuke_paths+=("$d"); done
+          [[ -d "/usr/share/miniconda" ]] && nuke_paths+=("/usr/share/miniconda")
+          [[ -d "/home/runner/.rustup" ]] && nuke_paths+=("/home/runner/.rustup")
+          [[ -d "/home/packer/.rustup" ]] && nuke_paths+=("/home/packer/.rustup")
+          [[ -d "/etc/skel/.rustup" ]] && nuke_paths+=("/etc/skel/.rustup")
+          [[ -d "/usr/local/.rustup" ]] && nuke_paths+=("/usr/local/.rustup")
+          [[ -d "/home/runner/.cargo" ]] && nuke_paths+=("/home/runner/.cargo")
+          [[ -d "/home/packer/.cargo" ]] && nuke_paths+=("/home/packer/.cargo")
+          [[ -d "/etc/skel/.cargo" ]] && nuke_paths+=("/etc/skel/.cargo")
+          
+          # Build tools
+          for d in /usr/share/gradle-*/; do [[ -d "$d" ]] && nuke_paths+=("$d"); done
+          [[ -d "/usr/share/kotlinc" ]] && nuke_paths+=("/usr/share/kotlinc")
+          for d in /usr/share/apache-maven-*/; do [[ -d "$d" ]] && nuke_paths+=("$d"); done
+          for d in /usr/lib/llvm-*/; do [[ -d "$d" ]] && nuke_paths+=("$d"); done
+          
+          # Other
+          [[ -f "/usr/local/bin/minikube" ]] && nuke_paths+=("/usr/local/bin/minikube")
+          [[ -d "/opt/runner-cache" ]] && nuke_paths+=("/opt/runner-cache")
+          [[ -d "/usr/local/share/powershell" ]] && nuke_paths+=("/usr/local/share/powershell")
+          [[ -d "/home/linuxbrew" ]] && nuke_paths+=("/home/linuxbrew")
+          [[ -d "/home/packer" ]] && nuke_paths+=("/home/packer")
+          [[ -d "/usr/local/n" ]] && nuke_paths+=("/usr/local/n")
+          [[ -d "/usr/lib/jvm" ]] && nuke_paths+=("/usr/lib/jvm")
+          
+          if [[ ${#nuke_paths[@]} -gt 0 ]]; then
+            readarray -t unique_paths < <(printf '%s\n' "${nuke_paths[@]}" | sort -u)
+            echo "Nuking ${#unique_paths[@]} items..."
+            sudo /tmp/rmz "${unique_paths[@]}" 2>/dev/null || true
+          fi
+          
+          echo ""
+          echo ">>> After cleanup, before merge:"
+          df -h /
+          
+          # ============================================
+          # PHASE 3: Merge disks with Btrfs
+          # ============================================
+          echo ""
+          echo "============================================"
+          echo "  Phase 3: Merge disks with Btrfs"
+          echo "============================================"
+          
+          # Install tools if needed
+          if ! command -v pvcreate &> /dev/null; then
+            echo ">>> Installing LVM..."
+            sudo apt-get update -qq && sudo apt-get install -y -qq lvm2
+          fi
+          if ! command -v mkfs.btrfs &> /dev/null; then
+            echo ">>> Installing Btrfs tools..."
+            sudo apt-get update -qq && sudo apt-get install -y -qq btrfs-progs
+          fi
+          
+          echo ">>> Disabling swap and unmounting /mnt..."
+          sudo swapoff -a || true
+          MNT_DEVICE=$(df /mnt --output=source | tail -1)
+          echo ">>> /mnt is on device: $MNT_DEVICE"
+          sudo umount /mnt || true
+          
+          # Create loopback from freed space
+          avail_kb=$(df / --output=avail | tail -1 | tr -d ' ')
+          loop_size=$(( avail_kb / 1024 / 1024 * 80 / 100 ))
+          [[ $loop_size -lt 10 ]] && loop_size=10
+          echo ">>> Creating ${loop_size}GB loopback..."
+          sudo fallocate -l ${loop_size}G /space.img
+          loop_dev=$(sudo losetup -f)
+          sudo losetup "$loop_dev" /space.img
+          
+          # Create LVM
+          echo ">>> Creating LVM..."
+          sudo pvcreate -ff -y "$MNT_DEVICE"
+          sudo pvcreate -ff -y "$loop_dev"
+          sudo vgcreate workspace "$MNT_DEVICE" "$loop_dev"
+          sudo lvcreate -l 100%FREE -n work workspace
+          
+          # Format and mount with Btrfs
+          echo ">>> Formatting as Btrfs with zstd compression..."
+          sudo mkfs.btrfs -f /dev/workspace/work
+          sudo mount -o compress=zstd /dev/workspace/work /home/runner/work
+          
+          # Create swap file
+          echo ">>> Creating 4GB swap file..."
+          sudo fallocate -l 4G /swap.img
+          sudo chmod 600 /swap.img
+          sudo mkswap /swap.img
+          sudo swapon /swap.img
+          
+          sudo chown -R runner:runner /home/runner/work
+          
+          # ============================================
+          # PHASE 4: Summary
+          # ============================================
+          echo ""
+          echo "============================================"
+          echo "  MAXIMUM SPACE - Final Summary"
+          echo "============================================"
+          echo ""
+          df -h
+          echo ""
+          
+          FINAL_ROOT_AVAIL=$(df / --output=avail -BG | tail -1 | tr -d ' G')
+          FINAL_ROOT_USED=$(df / --output=used -BG | tail -1 | tr -d ' G')
+          ROOT_FREED=$((FINAL_ROOT_AVAIL - INITIAL_ROOT_AVAIL))
+          WORKSPACE_AVAIL=$(df /home/runner/work --output=avail -BG | tail -1 | tr -d ' G')
+          WORKSPACE_SIZE=$(df /home/runner/work --output=size -BG | tail -1 | tr -d ' G')
+          
+          echo "============================================"
+          echo "  MAXIMUM SPACE RESULTS"
+          echo "============================================"
+          echo ""
+          echo "Root filesystem (/):"
+          echo "  Before: ${INITIAL_ROOT_USED}GB used, ${INITIAL_ROOT_AVAIL}GB available"
+          echo "  After:  ${FINAL_ROOT_USED}GB used, ${FINAL_ROOT_AVAIL}GB available"
+          echo "  Freed:  ${ROOT_FREED}GB"
+          echo ""
+          echo "Merged workspace (/home/runner/work) - Btrfs+zstd:"
+          echo "  Total size: ${WORKSPACE_SIZE}GB"
+          echo "  Available:  ${WORKSPACE_AVAIL}GB"
+          echo ""
+          echo "Combined from:"
+          echo "  - Loopback from root (~${loop_size}GB)"
+          echo "  - /mnt disk (~${INITIAL_MNT_AVAIL}GB)"
+          echo ""
+          echo "============================================"
+          echo "  TOTAL USABLE SPACE: ~${WORKSPACE_AVAIL}GB"
+          echo "============================================"
+      - name: Verify max-space workspace
+        working-directory: /home/runner/work
+        run: |
+          echo "Checking mount..."
+          mount | grep /home/runner/work || true
+          df -h /home/runner/work
+          echo ""
+          echo "Testing write access..."
+          echo "test" > test-file.txt
+          cat test-file.txt
+          rm test-file.txt
+          echo "Maximum space workspace is functional!"
