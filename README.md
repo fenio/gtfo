@@ -82,7 +82,7 @@ jobs:
       - uses: fenio/gh-rmrf@v1
         with:
           merge-disks: 'true'
-          build-mount-path: '/var/lib/docker/'
+          mount-path: '/var/lib/docker/'
 
       # 3. Restore Docker data AFTER merge
       - name: Restore Docker data
@@ -138,7 +138,7 @@ This gives Docker access to the full ~100GB merged volume for building large ima
 | `remove-docker-images` | Remove Docker images (~4GB) | `false` |
 | `nuke` | Experimental: Remove browsers, databases, cloud CLIs, build tools | `false` |
 | `merge-disks` | Merge root and /mnt into single LVM volume | `false` |
-| `build-mount-path` | Path where merged volume will be mounted (defaults to `$GITHUB_WORKSPACE`) | `''` |
+| `mount-path` | Path where merged volume will be mounted (defaults to `$GITHUB_WORKSPACE`) | `''` |
 | `use-btrfs` | Use Btrfs with zstd compression (requires merge-disks) | `false` |
 
 ## How it works
@@ -159,7 +159,7 @@ This gives Docker access to the full ~100GB merged volume for building large ima
 3. Creates a loopback file from freed space on root (~80% of available)
 4. Creates LVM volume group combining the former `/mnt` disk and loopback
 5. Formats as ext4 or Btrfs (with zstd compression)
-6. Mounts at `$GITHUB_WORKSPACE` (default) or custom `build-mount-path`
+6. Mounts at `$GITHUB_WORKSPACE` (default) or custom `mount-path`
 
 ### Space gains
 

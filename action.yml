@@ -47,7 +47,7 @@ inputs:
     description: 'Merge root and /mnt into single LVM volume'
     required: false
     default: 'false'
-  build-mount-path:
+  mount-path:
     description: 'Path where merged volume will be mounted. Defaults to $GITHUB_WORKSPACE. Set to /var/lib/docker/ for Docker builds.'
     required: false
     default: ''
@@ -315,7 +315,7 @@ runs:
       shell: bash
       env:
         USE_BTRFS: ${{ inputs.use-btrfs }}
-        BUILD_MOUNT_PATH: ${{ inputs.build-mount-path }}
+        BUILD_MOUNT_PATH: ${{ inputs.mount-path }}
       run: |
         echo "============================================"
         echo "  Merging disks into LVM volume..."
@@ -447,7 +447,7 @@ runs:
       shell: bash
       env:
         MERGE_DISKS: ${{ inputs.merge-disks }}
-        BUILD_MOUNT_PATH: ${{ inputs.build-mount-path }}
+        BUILD_MOUNT_PATH: ${{ inputs.mount-path }}
       run: |
         echo ""
         echo "============================================"
