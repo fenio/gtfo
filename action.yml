@@ -47,6 +47,10 @@ inputs:
     description: 'Merge root and /mnt into single LVM volume'
     required: false
     default: 'false'
+  build-mount-path:
+    description: 'Path where merged volume will be mounted. Defaults to $GITHUB_WORKSPACE. Set to /var/lib/docker/ for Docker builds.'
+    required: false
+    default: ''
   use-btrfs:
     description: 'Use Btrfs with zstd compression (requires merge-disks: true)'
     required: false
@@ -311,6 +315,7 @@ runs:
       shell: bash
       env:
         USE_BTRFS: ${{ inputs.use-btrfs }}
+        BUILD_MOUNT_PATH: ${{ inputs.build-mount-path }}
       run: |
         echo "============================================"
         echo "  Merging disks into LVM volume..."
@@ -391,20 +396,32 @@ runs:
         echo ">>> LVM configuration:"
         sudo vgdisplay workspace
         
+        # Determine mount path
+        if [[ -n "$BUILD_MOUNT_PATH" ]]; then
+          MOUNT_PATH="$BUILD_MOUNT_PATH"
+        else
+          MOUNT_PATH="${GITHUB_WORKSPACE}"
+        fi
+        
+        echo ">>> Mount target: $MOUNT_PATH"
+        
+        # Ensure mount path exists
+        sudo mkdir -p "$MOUNT_PATH"
+        
         # Format the volume
         echo ""
         if [[ "$USE_BTRFS" == "true" ]]; then
           echo ">>> Formatting as Btrfs with zstd compression..."
           sudo mkfs.btrfs -f /dev/workspace/work
           
-          echo ">>> Mounting at ${GITHUB_WORKSPACE}..."
-          sudo mount -o compress=zstd /dev/workspace/work "${GITHUB_WORKSPACE}"
+          echo ">>> Mounting at ${MOUNT_PATH}..."
+          sudo mount -o compress=zstd /dev/workspace/work "${MOUNT_PATH}"
         else
           echo ">>> Formatting as ext4..."
           sudo mkfs.ext4 -F /dev/workspace/work
           
-          echo ">>> Mounting at ${GITHUB_WORKSPACE}..."
-          sudo mount /dev/workspace/work "${GITHUB_WORKSPACE}"
+          echo ">>> Mounting at ${MOUNT_PATH}..."
+          sudo mount /dev/workspace/work "${MOUNT_PATH}"
         fi
         
         # Create swap file on root filesystem
@@ -414,9 +431,11 @@ runs:
         sudo mkswap /swap.img
         sudo swapon /swap.img
         
-        # Fix ownership
-        echo ">>> Fixing ownership..."
-        sudo chown -R runner:runner "${GITHUB_WORKSPACE}"
+        # Fix ownership (only for non-system paths)
+        if [[ "$MOUNT_PATH" == "${GITHUB_WORKSPACE}"* ]]; then
+          echo ">>> Fixing ownership..."
+          sudo chown -R runner:runner "${MOUNT_PATH}"
+        fi
         
         echo ""
         echo ">>> Disk merge complete!"
@@ -428,6 +447,7 @@ runs:
       shell: bash
       env:
         MERGE_DISKS: ${{ inputs.merge-disks }}
+        BUILD_MOUNT_PATH: ${{ inputs.build-mount-path }}
       run: |
         echo ""
         echo "============================================"
@@ -455,9 +475,16 @@ runs:
         echo ""
         
         if [[ "$MERGE_DISKS" == "true" ]]; then
-          WORKSPACE_AVAIL=$(df "${GITHUB_WORKSPACE}" --output=avail -BG | tail -1 | tr -d ' G')
-          WORKSPACE_SIZE=$(df "${GITHUB_WORKSPACE}" --output=size -BG | tail -1 | tr -d ' G')
-          echo "Merged workspace (${GITHUB_WORKSPACE}):"
+          # Determine mount path for summary
+          if [[ -n "$BUILD_MOUNT_PATH" ]]; then
+            MOUNT_PATH="$BUILD_MOUNT_PATH"
+          else
+            MOUNT_PATH="${GITHUB_WORKSPACE}"
+          fi
+          
+          WORKSPACE_AVAIL=$(df "${MOUNT_PATH}" --output=avail -BG | tail -1 | tr -d ' G')
+          WORKSPACE_SIZE=$(df "${MOUNT_PATH}" --output=size -BG | tail -1 | tr -d ' G')
+          echo "Merged volume (${MOUNT_PATH}):"
           echo "  Total size: ${WORKSPACE_SIZE}GB"
           echo "  Available:  ${WORKSPACE_AVAIL}GB"
           echo ""

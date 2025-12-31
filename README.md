@@ -8,7 +8,8 @@ GitHub-hosted runners come with a lot of pre-installed software you probably don
 
 - **Fast deletion** using [rmz](https://github.com/SUPERCILEX/fuc) (parallel, Rust-based rm)
 - **Configurable cleanup** - choose what to remove
-- **Disk merging** - combine root and `/mnt` into a single LVM volume at `$GITHUB_WORKSPACE` (~100GB)
+- **Disk merging** - combine root and `/mnt` into a single LVM volume (~100GB)
+- **Custom mount path** - mount merged volume at `$GITHUB_WORKSPACE` or `/var/lib/docker/` for Docker builds
 - **Btrfs support** - optional zstd compression for even more space
 
 ## Usage
@@ -62,6 +63,49 @@ jobs:
 
 Uses Btrfs with zstd compression for the merged volume.
 
+### For Docker builds
+
+When building large Docker images that exceed the default disk space, you can mount the merged volume directly at Docker's data directory. This requires backing up and restoring Docker data around the merge operation.
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Backup Docker data BEFORE merge
+      - name: Backup Docker data
+        run: |
+          sudo mkdir -p /tmp/docker-backup
+          sudo rsync -aPq /var/lib/docker/ /tmp/docker-backup/
+
+      # 2. Run gh-rmrf with custom mount path
+      - uses: fenio/gh-rmrf@v1
+        with:
+          merge-disks: 'true'
+          build-mount-path: '/var/lib/docker/'
+
+      # 3. Restore Docker data AFTER merge
+      - name: Restore Docker data
+        run: |
+          sudo rsync -aPq /tmp/docker-backup/ /var/lib/docker/
+          sudo rm -rf /tmp/docker-backup
+
+      # 4. Now checkout and build
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: your-image:latest
+```
+
+This gives Docker access to the full ~100GB merged volume for building large images.
+
 ### Custom configuration
 
 ```yaml
@@ -94,6 +138,7 @@ Uses Btrfs with zstd compression for the merged volume.
 | `remove-docker-images` | Remove Docker images (~4GB) | `false` |
 | `nuke` | Experimental: Remove browsers, databases, cloud CLIs, build tools | `false` |
 | `merge-disks` | Merge root and /mnt into single LVM volume | `false` |
+| `build-mount-path` | Path where merged volume will be mounted (defaults to `$GITHUB_WORKSPACE`) | `''` |
 | `use-btrfs` | Use Btrfs with zstd compression (requires merge-disks) | `false` |
 
 ## How it works
@@ -114,7 +159,7 @@ Uses Btrfs with zstd compression for the merged volume.
 3. Creates a loopback file from freed space on root (~80% of available)
 4. Creates LVM volume group combining the former `/mnt` disk and loopback
 5. Formats as ext4 or Btrfs (with zstd compression)
-6. Mounts at `$GITHUB_WORKSPACE`
+6. Mounts at `$GITHUB_WORKSPACE` (default) or custom `build-mount-path`
 
 ### Space gains
 
